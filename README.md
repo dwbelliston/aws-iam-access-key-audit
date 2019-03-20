@@ -16,17 +16,10 @@
 
 
 ## Setup
-
-
-## Misc
 ```
-aws s3 mb s3://radius-audit
-
-aws cloudformation package --template-file audit-api.cft.yml --s3-bucket radius-audit --output-template-file output.yml
-
-aws cloudformation deploy --template-file output.yml --stack-name radius-audit --capabilities CAPABILITY_IAM
+aws s3 mb s3://$(BUCKET_NAME)
+./deploy
 ```
-
 
 
 ## Questions 
