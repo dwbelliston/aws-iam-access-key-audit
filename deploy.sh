@@ -1,2 +1,12 @@
+# Prep the artifact
 ./prep.sh
-aws cloudformation package --template-file audit-api.cft.yml --s3-bucket radius-mailing --output-template-file output.yml && aws cloudformation deploy --template-file output.yml --stack-name radius-audit-1 --capabilities CAPABILITY_IAM
+
+# Run cloudformation package and deploy
+aws cloudformation package
+--template-file aws-iam-keys-audit.cft.yml \
+--s3-bucket aws-iam-keys-audit \
+--output-template-file output.yml \
+&& aws cloudformation deploy \
+--template-file output.yml \
+--stack-name stack-aws-iam-keys-audit \
+--capabilities CAPABILITY_IAM\

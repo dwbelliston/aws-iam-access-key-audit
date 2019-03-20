@@ -34,3 +34,4 @@ aws cloudformation deploy --template-file output.yml --stack-name radius-audit -
 - which account will this live in? 1 in each account or can it do cross account?
 - should boto3 client be a global for reuse?
 - best way to handle sync/async (extreme case when need to delete 50 keys)
+- best practice with cft
