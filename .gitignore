@@ -1,0 +1,4 @@
+src/dist
+src/*.zip
+output.yml
+*.DS_Store

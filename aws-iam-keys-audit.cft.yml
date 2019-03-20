@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "AWS IAM Access Keys Audit"
+
+Parameters:
+  lambdaFunctionKeyAudit:
+    Type: "String"
+    AllowedPattern: "^[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+$"
+    Default: "aws-iam-keys-audit"
+
+Resources:
+  apiLambdaPermission:
+    Type: "AWS::Lambda::Permission"
+    DependsOn:
+    - "apiGateway"
+    - "lambdaFunction"
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref "lambdaFunction"
+      Principal: apigateway.amazonaws.com
+
+  lambdaFunction:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Description: "Audit of Response Posted"
+      Code: ./audit/response-posted/response-posted.zip
+      FunctionName: !Ref "lambdaFunctionKeyAudit"
+      Handler: response-posted.lambda_handler
+      MemorySize: 128
+      Role: !GetAtt "responsePostedLambdaRole.Arn"
+      Runtime: python3.6
+      Timeout: 10
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-ea9b0d94
+        SubnetIds:
+          - subnet-2059836b
+          - subnet-7f62fc25      
+
+
+  responsePostedLambdaRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action:
+              - "sts:AssumeRole"
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+      Policies: 
+      - PolicyName: logs
+        PolicyDocument: 
+          Statement: 
+          - Effect: Allow
+            Action: 
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource: 
+              - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${lambdaFunctionKeyAudit}:*"
+      - PolicyName: es
+        PolicyDocument: 
+          Statement: 
+          - Effect: Allow
+            Action: 
+            - es:*
+            Resource: 
+            - "*"   
+      - PolicyName: ec2
+        PolicyDocument: 
+          Statement: 
+          - Effect: Allow
+            Action: 
+            - ec2:CreateNetworkInterface
+            - ec2:DescribeNetworkInterfaces
+            - ec2:DeleteNetworkInterface
+            Resource: 
+            - "*"                   
+      - PolicyName: ses
+        PolicyDocument: 
+          Statement: 
+          - Effect: Allow
+            Action: 
+            - ses:SendEmail
+            Resource: 
+            - "*"
+
+  lambdaLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${lambdaFunctionKeyAudit}"
+      RetentionInDays: 90
+
+Outputs:
+  lambdaArn:
+    Value: !GetAtt "lambdaFunction.Arn"
