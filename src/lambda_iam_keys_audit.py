@@ -119,8 +119,6 @@ def triage_key(key):
         elif key['Status'] == ACTIVE:
             # Key needs to be deactivated
             KEYS_TO_DEACTIVATE.append(format_key_object(key, key_age))
-    
-    KEYS_TO_DEACTIVATE.append(format_key_object(key, key_age))
 
 
 def process_users_keys(keys):

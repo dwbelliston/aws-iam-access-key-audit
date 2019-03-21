@@ -2,7 +2,7 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: "AWS IAM Access Keys Audit"
 
 Parameters:
-  S3BucketName:
+  GeneralName:
     Type: "String"
     AllowedPattern: "^[0-9a-zA-Z-/]*$"
     Default: "lambda-iam-keys-audit"
@@ -12,11 +12,12 @@ Parameters:
     AllowedPattern: "^[0-9a-zA-Z_/]*$"
     Default: "lambda_iam_keys_audit"
 
+
 Resources:
   S3Bucket:
     Type: AWS::S3::Bucket
     Properties: 
-      BucketName: !Ref "S3BucketName"
+      BucketName: !Ref "GeneralName"
       Tags:
         - 
           Key: "project"
@@ -88,11 +89,31 @@ Resources:
             Resource: 
             - "*"            
 
-  lambdaLogGroup:
+  LambdaLogGroup:
     Type: "AWS::Logs::LogGroup"
     Properties:
       LogGroupName: !Sub "/aws/lambda/${LambdaFunctionName}"
       RetentionInDays: 90
+
+  CloudWatchRule: 
+    Type: AWS::Events::Rule
+    Properties: 
+      Description: "Trigger Lambda to audit iam access keys"
+      Name: !Ref "GeneralName"
+      ScheduleExpression: "rate(1 minute)"
+      State: "ENABLED"
+      Targets: 
+        - 
+          Arn: !GetAtt "LambdaFunction.Arn"
+          Id: "LambdaIamKeyAudit"
+
+  PermissionForEventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: !Ref "LambdaFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt "CloudWatchRule.Arn"
 
 Outputs:
   lambdaArn:
