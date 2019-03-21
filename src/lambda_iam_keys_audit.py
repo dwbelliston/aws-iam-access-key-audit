@@ -158,6 +158,10 @@ def list_users():
 
 
 def lambda_handler(event, context):
+    # Reset these to empty
+    KEYS_TO_DELETE.clear()
+    KEYS_TO_DEACTIVATE.clear()
+
     # Get the users for the account
     aws_users = list_users()
 

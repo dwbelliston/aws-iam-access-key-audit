@@ -1,12 +1,15 @@
+#!/bin/bash
+source variables.sh
+
 # Prep the artifact
 ./prep.sh
 
 # Run cloudformation package and deploy
-aws cloudformation package
---template-file aws-iam-keys-audit.cft.yml \
---s3-bucket aws-iam-keys-audit \
+aws cloudformation package \
+--template-file cloudformation.yml \
+--s3-bucket $STACK_BUCKET_NAME \
 --output-template-file output.yml \
 && aws cloudformation deploy \
 --template-file output.yml \
---stack-name stack-aws-iam-keys-audit \
+--stack-name $STACK_NAME \
 --capabilities CAPABILITY_IAM\

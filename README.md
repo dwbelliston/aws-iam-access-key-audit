@@ -18,8 +18,9 @@
 
 
 ## Setup
+- Need to have stack bucket created
 ```
-aws s3 mb s3://$(BUCKET_NAME)
+aws s3 mb s3://$(ENTER_STACK_BUCKET_NAME)
 ./deploy
 ```
 

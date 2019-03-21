@@ -2,14 +2,29 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: "AWS IAM Access Keys Audit"
 
 Parameters:
+  S3BucketName:
+    Type: "String"
+    AllowedPattern: "^[0-9a-zA-Z-/]*$"
+    Default: "lambda-iam-keys-audit"
+
   LambdaFunctionName:
     Type: "String"
-    AllowedPattern: "^[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+$"
+    AllowedPattern: "^[0-9a-zA-Z_/]*$"
     Default: "lambda_iam_keys_audit"
 
 Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties: 
+      BucketName: !Ref "S3BucketName"
+      Tags:
+        - 
+          Key: "project"
+          Value: !Ref "LambdaFunctionName"
+
   LambdaFunction:
     Type: "AWS::Lambda::Function"
+    DependsOn: S3Bucket
     Properties:
       Description: "Audit user access keys"
       Code: ./src/lambda_iam_keys_audit.zip
@@ -19,6 +34,10 @@ Resources:
       Role: !GetAtt "LambdaRole.Arn"
       Runtime: python3.6
       Timeout: 10
+      Tags:
+        - 
+          Key: "project"
+          Value: !Ref "LambdaFunctionName"      
       Environment:
         Variables:
           MAX_KEY_AGE_DAYS: 90
@@ -57,6 +76,17 @@ Resources:
             - ec2:DeleteNetworkInterface
             Resource: 
             - "*"
+      - PolicyName: iam
+        PolicyDocument: 
+          Statement: 
+          - Effect: Allow
+            Action: 
+              - iam:DeleteAccessKey
+              - iam:ListAccessKeys
+              - iam:ListUsers
+              - iam:UpdateAccessKey
+            Resource: 
+            - "*"            
 
   lambdaLogGroup:
     Type: "AWS::Logs::LogGroup"
