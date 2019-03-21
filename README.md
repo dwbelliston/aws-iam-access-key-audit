@@ -6,7 +6,7 @@
     1. Get each users access keys
         1. Check age of each access key
         2. If key age meets age limit
-            1. If key is 'Inactive'
+            1. If key is 'Inactive' and over waiting period for inactive keys
                 1. Delete key
                 2. log
             2. Else
@@ -18,12 +18,7 @@
 
 
 ## Setup
-- Need to have stack bucket created
-```
-aws s3 mb s3://$(ENTER_STACK_BUCKET_NAME)
-./deploy
-```
-
-### Test Local
-- `export AWS_DEFAULT_PROFILE=$(profileName)`
-- `python src/lambda_iam_keys_audit.py `
+- Need to have bucket created for cloud formation stack
+- add the name to the `variables.sh` file
+- update cloudformation template parameters
+- run `./deploy.sh` to create stack

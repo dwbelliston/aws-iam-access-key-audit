@@ -15,7 +15,7 @@ Parameters:
   SNSEmailSubscription:
     Type: "String"
     AllowedPattern: "^[0-9a-zA-Z@/./]*$"  
-    Default: "dustin@1strategy.com"
+    Default: "user@company.com"
 
 
 Resources:
