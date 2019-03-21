@@ -1,5 +1,6 @@
 import time
 import os
+import json
 import logging
 import datetime
 import boto3
@@ -15,6 +16,7 @@ a window of time.
 # Setup boto3
 SESSION = boto3.session.Session()
 IAM_CLIENT = boto3.client('iam')
+SNS_CLIENT = boto3.client('sns')
 
 # Setup Logger
 LOGGER = logging.getLogger()
@@ -28,13 +30,27 @@ LOGGER.setLevel(logging.INFO)
 # Set up parameters
 MAX_KEY_AGE_DAYS = float(os.environ.get('MAX_KEY_AGE_DAYS')) or 90
 DELETE_KEY_WAITING_DAYS = os.environ.get('DELETE_KEY_WAITING_DAYS') or 5
+SNS_TARGET_ARN = os.environ.get('SNS_TARGET_ARN')
 INACTIVE = 'Inactive'
 ACTIVE = 'Active'
 
 # Buckets to hold keys that need action
 KEYS_TO_DELETE = []
 KEYS_TO_DEACTIVATE = []
+ACTIONS_COMPLETED = []
 
+
+def report_completed():
+    '''
+    Publish completed actions to sns topic
+    '''
+    if ACTIONS_COMPLETED:
+        SNS_CLIENT.publish(
+            TargetArn=SNS_TARGET_ARN,
+            Message=json.dumps({'default': json.dumps(ACTIONS_COMPLETED)}),
+            MessageStructure='json'
+        )
+        
 
 def parse_api_response_code(response):
     try:
@@ -49,6 +65,14 @@ def log_response(response, key, action):
     code_status = parse_api_response_code(response)
 
     if code_status == 200:
+        # If it was successful add to completed bucket to clean up
+        ACTIONS_COMPLETED.append({
+            "Action": action,
+            "UserName": key["UserName"],
+            "AccessKeyId": key["AccessKeyId"],
+            "KeyAge": key["KeyAge"]
+        })
+
         LOGGER.info(
             f"{action} Key UserName={key['UserName']} AccessKeyId={key['AccessKeyId']} KeyAge={key['KeyAge']}")
     else:
@@ -120,6 +144,7 @@ def triage_key(key):
             # Key needs to be deactivated
             KEYS_TO_DEACTIVATE.append(format_key_object(key, key_age))
 
+    KEYS_TO_DELETE.append(format_key_object(key, key_age))
 
 def process_users_keys(keys):
     '''
@@ -159,6 +184,7 @@ def lambda_handler(event, context):
     # Reset these to empty
     KEYS_TO_DELETE.clear()
     KEYS_TO_DEACTIVATE.clear()
+    ACTIONS_COMPLETED.clear()
 
     # Get the users for the account
     aws_users = list_users()
@@ -172,6 +198,7 @@ def lambda_handler(event, context):
     
     delete_keys()
     deactivate_keys()
+    report_completed()
 
 
 if __name__ == "__main__":

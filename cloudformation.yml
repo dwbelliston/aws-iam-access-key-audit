@@ -12,6 +12,11 @@ Parameters:
     AllowedPattern: "^[0-9a-zA-Z_/]*$"
     Default: "lambda_iam_keys_audit"
 
+  SNSEmailSubscription:
+    Type: "String"
+    AllowedPattern: "^[0-9a-zA-Z@/./]*$"  
+    Default: "dustin@1strategy.com"
+
 
 Resources:
   S3Bucket:
@@ -43,6 +48,7 @@ Resources:
         Variables:
           MAX_KEY_AGE_DAYS: 90
           DELETE_KEY_WAITING_DAYS: 2
+          SNS_TARGET_ARN: !Ref "SNSTopic"
 
   LambdaRole:
     Type: "AWS::IAM::Role"
@@ -88,6 +94,14 @@ Resources:
               - iam:UpdateAccessKey
             Resource: 
             - "*"            
+      - PolicyName: sns
+        PolicyDocument: 
+          Statement: 
+          - Effect: Allow
+            Action: 
+              - sns:Publish
+            Resource: 
+              - !Ref "SNSTopic"
 
   LambdaLogGroup:
     Type: "AWS::Logs::LogGroup"
@@ -114,6 +128,19 @@ Resources:
       Action: "lambda:InvokeFunction"
       Principal: "events.amazonaws.com"
       SourceArn: !GetAtt "CloudWatchRule.Arn"
+
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    Properties: 
+      DisplayName: !Ref "GeneralName"
+      TopicName: !Ref "GeneralName"
+
+  SNSSubscription:
+    Type: "AWS::SNS::Subscription"
+    Properties:
+      Endpoint: !Ref "SNSEmailSubscription"
+      Protocol: "email"
+      TopicArn: !Ref "SNSTopic"
 
 Outputs:
   lambdaArn:
