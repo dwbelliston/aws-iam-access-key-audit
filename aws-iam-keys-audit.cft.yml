@@ -2,42 +2,29 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: "AWS IAM Access Keys Audit"
 
 Parameters:
-  lambdaFunctionKeyAudit:
+  LambdaFunctionName:
     Type: "String"
     AllowedPattern: "^[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+$"
-    Default: "aws-iam-keys-audit"
+    Default: "lambda_iam_keys_audit"
 
 Resources:
-  apiLambdaPermission:
-    Type: "AWS::Lambda::Permission"
-    DependsOn:
-    - "apiGateway"
-    - "lambdaFunction"
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !Ref "lambdaFunction"
-      Principal: apigateway.amazonaws.com
-
-  lambdaFunction:
+  LambdaFunction:
     Type: "AWS::Lambda::Function"
     Properties:
-      Description: "Audit of Response Posted"
-      Code: ./audit/response-posted/response-posted.zip
-      FunctionName: !Ref "lambdaFunctionKeyAudit"
-      Handler: response-posted.lambda_handler
+      Description: "Audit user access keys"
+      Code: ./src/lambda_iam_keys_audit.zip
+      FunctionName: !Ref "LambdaFunctionName"
+      Handler: lambda_iam_keys_audit.lambda_handler
       MemorySize: 128
-      Role: !GetAtt "responsePostedLambdaRole.Arn"
+      Role: !GetAtt "LambdaRole.Arn"
       Runtime: python3.6
       Timeout: 10
-      VpcConfig:
-        SecurityGroupIds:
-          - sg-ea9b0d94
-        SubnetIds:
-          - subnet-2059836b
-          - subnet-7f62fc25      
+      Environment:
+        Variables:
+          MAX_KEY_AGE_DAYS: 90
+          DELETE_KEY_WAITING_DAYS: 2
 
-
-  responsePostedLambdaRole:
+  LambdaRole:
     Type: "AWS::IAM::Role"
     Properties:
       AssumeRolePolicyDocument:
@@ -59,15 +46,7 @@ Resources:
             - logs:CreateLogStream
             - logs:PutLogEvents
             Resource: 
-              - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${lambdaFunctionKeyAudit}:*"
-      - PolicyName: es
-        PolicyDocument: 
-          Statement: 
-          - Effect: Allow
-            Action: 
-            - es:*
-            Resource: 
-            - "*"   
+              - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${LambdaFunctionName}:*" 
       - PolicyName: ec2
         PolicyDocument: 
           Statement: 
@@ -77,22 +56,14 @@ Resources:
             - ec2:DescribeNetworkInterfaces
             - ec2:DeleteNetworkInterface
             Resource: 
-            - "*"                   
-      - PolicyName: ses
-        PolicyDocument: 
-          Statement: 
-          - Effect: Allow
-            Action: 
-            - ses:SendEmail
-            Resource: 
             - "*"
 
   lambdaLogGroup:
     Type: "AWS::Logs::LogGroup"
     Properties:
-      LogGroupName: !Sub "/aws/lambda/${lambdaFunctionKeyAudit}"
+      LogGroupName: !Sub "/aws/lambda/${LambdaFunctionName}"
       RetentionInDays: 90
 
 Outputs:
   lambdaArn:
-    Value: !GetAtt "lambdaFunction.Arn"
+    Value: !GetAtt "LambdaFunction.Arn"
