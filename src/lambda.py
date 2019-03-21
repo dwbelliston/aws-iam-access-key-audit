@@ -27,8 +27,8 @@ LOGGER.addHandler(_log_handler)
 LOGGER.setLevel(logging.INFO)
 
 # Set up parameters
-MAX_KEY_AGE_DAYS = float(os.environ.get('MAX_KEY_AGE_DAYS'))
-DELETE_KEY_WAITING_DAYS = float(os.environ.get('DELETE_KEY_WAITING_DAYS'))
+MAX_KEY_AGE_DAYS = int(os.environ.get('MAX_KEY_AGE_DAYS'))
+DELETE_KEY_WAITING_DAYS = int(os.environ.get('DELETE_KEY_WAITING_DAYS'))
 SNS_TARGET_ARN = os.environ.get('SNS_TARGET_ARN')
 
 INACTIVE = 'Inactive'
@@ -120,8 +120,7 @@ def get_key_age(key_creation_date):
     """
     Return the Key Age of the user access key
     """
-    now_date = datetime.datetime.now()
-    now_date = now_date.replace(tzinfo=None)
+    now_date = datetime.datetime.utcnow()
     key_creation_date = key_creation_date.replace(tzinfo=None)
     date_diff = now_date - key_creation_date
     key_age = date_diff.days
@@ -154,8 +153,6 @@ def triage_key(key):
         elif key['Status'] == ACTIVE:
             # Key needs to be deactivated
             KEYS_TO_DEACTIVATE.append(format_key_object(key, key_age))
-
-    KEYS_TO_DELETE.append(format_key_object(key, key_age))
 
 def process_users_keys(keys):
     '''
@@ -204,8 +201,8 @@ def lambda_handler(event, context):
         # Process the users keys
         process_users_keys(user_keys)
     
-    delete_keys()
     deactivate_keys()
+    delete_keys()
     report_completed()
 
 

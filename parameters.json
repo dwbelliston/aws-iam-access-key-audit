@@ -1,0 +1,8 @@
+[
+  "STACK_NAME=stack-lambda-iam-keys-audit",
+  "STACK_BUCKET_NAME=stack-lambda-iam-keys-audit",
+  "WaitDaysToDelete=90",
+  "MaxDaysAgeOfKey=5",
+  "ScheduleToRun=rate(1 minute)",
+  "SNSEmailSubscription=dustin@1strategy.com"
+]

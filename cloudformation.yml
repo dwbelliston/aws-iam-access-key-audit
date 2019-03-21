@@ -1,18 +1,19 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "AWS Lambda IAM Access Keys Audit"
+Description: "AWS Lambda Audit IAM Access Keys and Prune"
 
 Parameters:
   MaxDaysAgeOfKey:
     Type: "String"
-    AllowedPattern: "^[0-9]$"
+    Description: "The age in days of keys that should be marked inactive"
 
   WaitDaysToDelete:
     Type: "String"
-    AllowedPattern: "^[0-9]$"
+    Description: "The time in days to wait for a key to be inactive before deleting"
 
   ScheduleToRun:
     Type: "String"
-    AllowedValue:
+    Description: "Cloud watch schedule expression the lambda should run"
+    AllowedValues:
       - "rate(1 minute)"
       - "rate(1 day)"
       - "rate(30 days)"
@@ -20,7 +21,7 @@ Parameters:
 
   SNSEmailSubscription:
     Type: "String"
-    AllowedPattern: "/[^\s@]+@[^\s@]+\.[^\s@]+/"      
+    Description: "Email recipient from SNS publication"
 
   LambdaFunctionName:
     Type: "String"
@@ -57,9 +58,9 @@ Resources:
     DependsOn: S3Bucket
     Properties:
       Description: "Audit user access keys"
-      Code: ./src/lambda_iam_keys_audit.zip
+      Code: ./src/lambda.zip
       FunctionName: !Ref "LambdaFunctionName"
-      Handler: lambda_iam_keys_audit.lambda_handler
+      Handler: lambda.lambda_handler
       MemorySize: 128
       Role: !GetAtt "LambdaRole.Arn"
       Runtime: python3.6
@@ -116,12 +117,6 @@ Resources:
               - sns:Publish
             Resource: 
               - !Ref "SNSTopic"
-
-  LambdaLogGroup:
-    Type: "AWS::Logs::LogGroup"
-    Properties:
-      LogGroupName: !Sub "/aws/lambda/${LambdaFunctionName}"
-      RetentionInDays: 90
 
   CloudWatchRule: 
     Type: AWS::Events::Rule

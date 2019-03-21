@@ -1,8 +1,9 @@
 #!/bin/bash
-source variables.sh
+STACK_NAME="stack-lambda-iam-keys-audit"
+STACK_BUCKET_NAME="stack-lambda-iam-keys-audit"
 
 # Prep the artifact
-./prep.sh
+./prepare-lambda-artifact.sh
 
 # Run cloudformation package and deploy
 aws cloudformation package \
@@ -12,4 +13,6 @@ aws cloudformation package \
 && aws cloudformation deploy \
 --template-file output.yml \
 --stack-name $STACK_NAME \
---capabilities CAPABILITY_IAM\
+--tags file://tags.json \
+--parameter-overrides file://parameters.json \
+--capabilities CAPABILITY_IAM
