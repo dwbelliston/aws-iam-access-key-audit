@@ -1,28 +1,52 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "AWS IAM Access Keys Audit"
+Description: "AWS Lambda IAM Access Keys Audit"
 
 Parameters:
-  GeneralName:
+  MaxDaysAgeOfKey:
     Type: "String"
-    AllowedPattern: "^[0-9a-zA-Z-/]*$"
-    Default: "lambda-iam-keys-audit"
+    AllowedPattern: "^[0-9]$"
+
+  WaitDaysToDelete:
+    Type: "String"
+    AllowedPattern: "^[0-9]$"
+
+  ScheduleToRun:
+    Type: "String"
+    AllowedValue:
+      - "rate(1 minute)"
+      - "rate(1 day)"
+      - "rate(30 days)"
+      - "rate(90 days)"
+
+  SNSEmailSubscription:
+    Type: "String"
+    AllowedPattern: "/[^\s@]+@[^\s@]+\.[^\s@]+/"      
 
   LambdaFunctionName:
     Type: "String"
     AllowedPattern: "^[0-9a-zA-Z_/]*$"
     Default: "lambda_iam_keys_audit"
 
-  SNSEmailSubscription:
+  SNSTopicName:
     Type: "String"
-    AllowedPattern: "^[0-9a-zA-Z@/./]*$"  
-    Default: "user@company.com"
+    AllowedPattern: "^[0-9a-zA-Z-/]*$"
+    Default: "lambda-iam-keys-audit"
 
+  LambdaS3BucketName:
+    Type: "String"
+    AllowedPattern: "^[0-9a-zA-Z-/]*$"
+    Default: "lambda-iam-keys-audit"
+
+  CloudWatchRuleName:
+    Type: "String"
+    AllowedPattern: "^[0-9a-zA-Z-/]*$"
+    Default: "lambda-iam-keys-audit"
 
 Resources:
   S3Bucket:
     Type: AWS::S3::Bucket
     Properties: 
-      BucketName: !Ref "GeneralName"
+      BucketName: !Ref "LambdaS3BucketName"
       Tags:
         - 
           Key: "project"
@@ -46,8 +70,8 @@ Resources:
           Value: !Ref "LambdaFunctionName"      
       Environment:
         Variables:
-          MAX_KEY_AGE_DAYS: 90
-          DELETE_KEY_WAITING_DAYS: 2
+          MAX_KEY_AGE_DAYS: !Ref MaxDaysAgeOfKey
+          DELETE_KEY_WAITING_DAYS: !Ref WaitDaysToDelete
           SNS_TARGET_ARN: !Ref "SNSTopic"
 
   LambdaRole:
@@ -73,16 +97,6 @@ Resources:
             - logs:PutLogEvents
             Resource: 
               - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${LambdaFunctionName}:*" 
-      - PolicyName: ec2
-        PolicyDocument: 
-          Statement: 
-          - Effect: Allow
-            Action: 
-            - ec2:CreateNetworkInterface
-            - ec2:DescribeNetworkInterfaces
-            - ec2:DeleteNetworkInterface
-            Resource: 
-            - "*"
       - PolicyName: iam
         PolicyDocument: 
           Statement: 
@@ -113,8 +127,8 @@ Resources:
     Type: AWS::Events::Rule
     Properties: 
       Description: "Trigger Lambda to audit iam access keys"
-      Name: !Ref "GeneralName"
-      ScheduleExpression: "rate(1 minute)"
+      Name: !Ref "CloudWatchRuleName"
+      ScheduleExpression: !Ref ScheduleToRun
       State: "ENABLED"
       Targets: 
         - 
@@ -132,8 +146,8 @@ Resources:
   SNSTopic:
     Type: AWS::SNS::Topic
     Properties: 
-      DisplayName: !Ref "GeneralName"
-      TopicName: !Ref "GeneralName"
+      DisplayName: !Ref "SNSTopicName"
+      TopicName: !Ref "SNSTopicName"
 
   SNSSubscription:
     Type: "AWS::SNS::Subscription"

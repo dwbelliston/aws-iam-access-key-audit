@@ -1,4 +1,3 @@
-import time
 import os
 import json
 import logging
@@ -28,9 +27,10 @@ LOGGER.addHandler(_log_handler)
 LOGGER.setLevel(logging.INFO)
 
 # Set up parameters
-MAX_KEY_AGE_DAYS = float(os.environ.get('MAX_KEY_AGE_DAYS')) or 90
-DELETE_KEY_WAITING_DAYS = os.environ.get('DELETE_KEY_WAITING_DAYS') or 5
+MAX_KEY_AGE_DAYS = float(os.environ.get('MAX_KEY_AGE_DAYS'))
+DELETE_KEY_WAITING_DAYS = float(os.environ.get('DELETE_KEY_WAITING_DAYS'))
 SNS_TARGET_ARN = os.environ.get('SNS_TARGET_ARN')
+
 INACTIVE = 'Inactive'
 ACTIVE = 'Active'
 
@@ -61,6 +61,7 @@ def parse_api_response_code(response):
 
     return response_status
 
+
 def log_response(response, key, action):
     code_status = parse_api_response_code(response)
 
@@ -79,30 +80,40 @@ def log_response(response, key, action):
         LOGGER.critical(
             f"Failed: {action} Key API={code_status} UserName={key['UserName']} AccessKeyId={key['AccessKeyId']} KeyAge={key['KeyAge']}")
 
+
 def deactivate_keys():
     if KEYS_TO_DEACTIVATE:
         for key in KEYS_TO_DEACTIVATE:
-            # Perform Action
-            response = IAM_CLIENT.update_access_key(
-                UserName=key['UserName'],
-                AccessKeyId=key['AccessKeyId'],
-                Status='Inactive'
-            )
+            try: 
+                response = IAM_CLIENT.update_access_key(
+                    UserName=key['UserName'],
+                    AccessKeyId=key['AccessKeyId'],
+                    Status='Inactive'
+                )
 
-            # Log response
-            log_response(response, key, 'Deactivated')
+                # Log response
+                log_response(response, key, 'Deactivated')
+
+            except Exception as error:
+                LOGGER.critical(
+                    f"Failed to Deactivate key UserName={key['UserName']} AccessKeyId={key['AccessKeyId']} Error={error}")
 
 
 def delete_keys():
     if KEYS_TO_DELETE:
         for key in KEYS_TO_DELETE:
-            response = IAM_CLIENT.delete_access_key(
-                UserName=key['UserName'],
-                AccessKeyId=key['AccessKeyId']
-            )
+            try:
+                response = IAM_CLIENT.delete_access_key(
+                    UserName=key['UserName'],
+                    AccessKeyId=key['AccessKeyId']
+                )
 
-            # Log response
-            log_response(response, key, 'Deleted')
+                # Log response
+                log_response(response, key, 'Deleted')
+
+            except Exception as error:
+                LOGGER.critical(
+                    f"Failed to Delete key UserName={key['UserName']} AccessKeyId={key['AccessKeyId']} Error={error}")
 
 
 def get_key_age(key_creation_date):
@@ -160,7 +171,6 @@ def list_user_keys(user):
     Return all the access keys of the given user
     """
     keys = []
-    # TODO: Maybe dont need pagination, set flag to unpaginate
     paginator = IAM_CLIENT.get_paginator('list_access_keys')
     for access_key in paginator.paginate(UserName=user['UserName']):
         for key in access_key['AccessKeyMetadata']:
@@ -173,7 +183,6 @@ def list_users():
     Return all AWS users list
     """
     users = []
-    # TODO: Maybe dont need pagination, set flag to unpaginate
     paginator = IAM_CLIENT.get_paginator('list_users')
     for page_users in paginator.paginate():
         users.append(page_users)
@@ -190,11 +199,10 @@ def lambda_handler(event, context):
     aws_users = list_users()
 
     for aws_user in aws_users:
-        if aws_user['UserName'] == 'dustin':
-            # Get each users keys
-            user_keys = list_user_keys(aws_user)
-            # Process the users keys
-            process_users_keys(user_keys)
+        # Get each users keys
+        user_keys = list_user_keys(aws_user)
+        # Process the users keys
+        process_users_keys(user_keys)
     
     delete_keys()
     deactivate_keys()
